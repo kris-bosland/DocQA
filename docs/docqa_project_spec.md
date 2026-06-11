@@ -40,7 +40,7 @@ A full-stack portfolio project demonstrating:
 | Layer | Technology | Notes |
 |---|---|---|
 | Front-end | Blazor WebAssembly (hosted) | C# throughout; no JavaScript framework |
-| API | ASP.NET Core Minimal API (.NET 9) | Thin, no MVC controllers |
+| API | ASP.NET Core Minimal API (.NET 10) | Thin, no MVC controllers |
 | AI | Anthropic Claude API — `claude-3-5-haiku-20241022` | Cheapest capable model; ~$0.001/call |
 | ORM | Entity Framework Core 9 | Code-first, migrations |
 | Database (local) | SQL Server LocalDB | Dev environment |

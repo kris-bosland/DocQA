@@ -64,7 +64,7 @@ DocQA/
    ```
    dotnet new sln -n DocQA
    dotnet new webapi -n DocQA.Server --no-openapi
-   dotnet new blazorwasm -n DocQA.Client --hosted   # or add manually
+   dotnet new blazorwasm -n DocQA.Client
    dotnet new classlib -n DocQA.Shared
    dotnet new xunit -n DocQA.Tests.Unit
    dotnet new xunit -n DocQA.Tests.Acceptance
@@ -121,7 +121,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore dependencies
         run: dotnet restore
@@ -154,7 +154,7 @@ jobs:
       # on GitHub Actions — no changes needed when migrating.
       - name: Install Playwright browsers
         if: false
-        run: pwsh DocQA.Tests.Browser/bin/Release/net9.0/playwright.ps1 install --with-deps chromium
+        run: pwsh DocQA.Tests.Browser/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Run browser tests
         if: false
@@ -490,7 +490,7 @@ App Service (Linux) provides a persistent `/home` directory that survives restar
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
       - name: Publish server
         run: dotnet publish DocQA.Server/DocQA.Server.csproj -c Release -o publish/server
       - name: Deploy to Azure App Service
@@ -508,7 +508,7 @@ App Service (Linux) provides a persistent `/home` directory that survives restar
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
       - name: Publish client
         run: dotnet publish DocQA.Client/DocQA.Client.csproj -c Release -o publish/client
       - name: Deploy to Static Web App

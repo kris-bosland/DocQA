@@ -11,7 +11,7 @@ Full specification: [docs/docqa_project_spec.md](../docs/docqa_project_spec.md)
 | Layer | Technology |
 |---|---|
 | Front-end | Blazor WebAssembly (hosted, C# only — no JS frameworks) |
-| API | ASP.NET Core Minimal API (.NET 9) — no MVC controllers |
+| API | ASP.NET Core Minimal API (.NET 10) — no MVC controllers |
 | AI | Anthropic Claude API — `claude-3-5-haiku-20241022` via `Anthropic.SDK` NuGet |
 | ORM | Entity Framework Core 9 (code-first, migrations) |
 | Database (dev) | SQL Server LocalDB |

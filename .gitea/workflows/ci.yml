@@ -1,0 +1,85 @@
+# .gitea/workflows/ci.yml
+#
+# GITEA vs GITHUB ACTIONS MIGRATION NOTES
+# ----------------------------------------
+# This file uses Gitea Actions syntax, which is a subset of GitHub Actions YAML.
+# When migrating to GitHub Actions:
+#   1. Move this file to .github/workflows/ci.yml (no content changes needed for
+#      the build/test jobs — Gitea Actions supports the same syntax).
+#   2. 'runs-on: ubuntu-latest' is the same label on GitHub hosted runners.
+#   3. GitHub marketplace actions (e.g. azure/webapps-deploy) work natively on
+#      GitHub Actions but are fetched from GitHub by Gitea runners — ensure your
+#      Gitea runner has outbound internet access, or pin to a local mirror.
+#   4. Add deployment jobs (see Phase 6 in docs/implementation-plan.md) — they
+#      are omitted here because Azure resources do not exist yet.
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    # MIGRATION NOTE: 'ubuntu-latest' is the correct label on both Gitea (confirmed)
+    # and GitHub hosted runners — no change needed when migrating.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run unit tests
+        run: >
+          dotnet test DocQA.Tests.Unit/DocQA.Tests.Unit.csproj
+          --no-build --configuration Release
+          --logger "console;verbosity=normal"
+
+      - name: Run acceptance tests
+        run: >
+          dotnet test DocQA.Tests.Acceptance/DocQA.Tests.Acceptance.csproj
+          --no-build --configuration Release
+          --logger "console;verbosity=normal"
+        env:
+          # Acceptance tests use SQLite :memory: — no connection string needed.
+          # MIGRATION NOTE: if you switch acceptance tests to SQL Server LocalDB
+          # in CI, add the connection string as a GitHub/Gitea secret and
+          # reference it here: ConnectionStrings__DefaultConnection: ${{ secrets.CI_DB }}
+          ASPNETCORE_ENVIRONMENT: Testing
+
+      # Browser tests are disabled until Phase 5b.
+      # To enable: remove the 'if: false' conditions and ensure
+      # DocQA.Tests.Browser has real tests (no Skip attributes).
+      # MIGRATION NOTE: the install command and test step below are identical
+      # on GitHub Actions — no changes needed when migrating.
+      - name: Cache Playwright browsers
+        if: false
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('**/DocQA.Tests.Browser/*.csproj') }}
+
+      - name: Install Playwright browsers
+        if: false
+        run: pwsh DocQA.Tests.Browser/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Run browser tests
+        if: false
+        run: >
+          dotnet test DocQA.Tests.Browser/DocQA.Tests.Browser.csproj
+          --no-build --configuration Release
+          --logger "console;verbosity=normal"
+        env:
+          ASPNETCORE_ENVIRONMENT: Testing
