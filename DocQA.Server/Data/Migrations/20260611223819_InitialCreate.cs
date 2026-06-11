@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace DocQA.Server.Migrations
+namespace DocQA.Server.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
