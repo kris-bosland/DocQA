@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="DocQA.Client/DocQA.Client.csproj" />
+  <Project Path="DocQA.Server/DocQA.Server.csproj" />
+  <Project Path="DocQA.Shared/DocQA.Shared.csproj" />
+  <Project Path="DocQA.Tests.Acceptance/DocQA.Tests.Acceptance.csproj" />
+  <Project Path="DocQA.Tests.Browser/DocQA.Tests.Browser.csproj" />
+  <Project Path="DocQA.Tests.Unit/DocQA.Tests.Unit.csproj" />
+</Solution>
