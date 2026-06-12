@@ -21,6 +21,7 @@ applyTo: "DocQA.Server/**"
 - `AppDbContext` exposes `DbSet<Document>` and `DbSet<Message>`; access via expression-body properties (`=> Set<T>()`)
 - Configure `Message` → `Document` FK with `OnDelete(DeleteBehavior.Cascade)` in `OnModelCreating`
 - Run migrations with: `dotnet ef migrations add <Name> --project DocQA.Server`
+- Always assign `DateTime.UtcNow` for `UploadedAt`/`CreatedAt`; never `DateTime.Now`
 
 ## Error handling
 - Return `404 NotFound` when an entity is not found by ID

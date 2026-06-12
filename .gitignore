@@ -123,6 +123,11 @@ ipch/
 *.VC.db
 *.VC.VC.opendb
 
+# SQLite databases (local dev/prod file)
+*.db
+*.db-shm
+*.db-wal
+
 # Visual Studio profiler
 *.psess
 *.vsp

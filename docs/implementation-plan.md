@@ -177,10 +177,10 @@ jobs:
 ### Tasks
 
 1. Install NuGet packages in `DocQA.Server`:
-   - `Microsoft.EntityFrameworkCore.SqlServer`
-   - `Microsoft.EntityFrameworkCore.Design`
-   - `Microsoft.EntityFrameworkCore.Sqlite` (for acceptance test configuration)
-   - `Microsoft.EntityFrameworkCore.Tools`
+   - `Microsoft.EntityFrameworkCore.Design` (tooling only — `PrivateAssets=all`)
+   - `Microsoft.EntityFrameworkCore.Sqlite` (runtime + acceptance tests)
+
+   > **Note**: SqlServer is not needed. The project uses SQLite for both dev and prod.
 2. Create `DocQA.Server/Models/Document.cs` and `Message.cs`
 3. Create `DocQA.Server/Data/AppDbContext.cs` (cascade delete on `Message → Document`)
 4. Register `AppDbContext` in `Program.cs`; read connection string from config
@@ -200,33 +200,42 @@ jobs:
 // DocQA.Tests.Acceptance/Fixtures/ApiFixture.cs
 public class ApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    // Keep one connection open for the lifetime of the fixture so the
+    // :memory: database survives across DbContext instances.
+    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        _connection.Open(); // must be open before DI resolves any DbContext
+
         builder.UseEnvironment("Testing");
         builder.ConfigureServices(services =>
         {
-            // Replace SQL Server with SQLite :memory:
+            // Replace production DbContext with the shared :memory: connection
             var descriptor = services.Single(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
             services.Remove(descriptor);
-            services.AddDbContext<AppDbContext>(opts =>
-                opts.UseSqlite("DataSource=:memory:"));
+            services.AddDbContext<AppDbContext>(opts => opts.UseSqlite(_connection));
 
-            // Replace IClaudeService with a stub
-            var claude = services.Single(d => d.ServiceType == typeof(IClaudeService));
-            services.Remove(claude);
+            // Stub IClaudeService (safe even before Phase 4 registers it)
+            var claudeDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IClaudeService));
+            if (claudeDescriptor is not null) services.Remove(claudeDescriptor);
             services.AddSingleton<IClaudeService, StubClaudeService>();
         });
     }
 
     public async Task InitializeAsync()
     {
-        // Open the SQLite connection before EnsureCreated (required for :memory:)
-        var db = Services.GetRequiredService<AppDbContext>();
-        await db.Database.OpenConnectionAsync();
+        // Resolve via a scope — AppDbContext is scoped, not singleton
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.EnsureCreatedAsync();
     }
 
-    public new async Task DisposeAsync() => await base.DisposeAsync();
+    public new async Task DisposeAsync()
+    {
+        await _connection.DisposeAsync();
+        await base.DisposeAsync();
+    }
 }
 ```
 
