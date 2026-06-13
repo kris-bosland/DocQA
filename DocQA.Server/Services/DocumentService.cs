@@ -16,7 +16,7 @@ public class DocumentService(AppDbContext db, ILogger<DocumentService> logger) :
 
         var doc = new Document
         {
-            FileName = file.FileName,
+            FileName = Path.GetFileName(file.FileName),
             Content = content,
             FileSizeBytes = file.Length,
             UploadedAt = DateTime.UtcNow
@@ -29,6 +29,12 @@ public class DocumentService(AppDbContext db, ILogger<DocumentService> logger) :
         return ToDto(doc, includeContent: true);
     }
 
+    /// <summary>
+    /// Retrieves all documents without their content, ordered by upload date (newest first).
+    /// </summary>
+    /// <remarks>
+    /// Content is excluded for performance; use <see cref="GetByIdAsync"/> for full details.
+    /// </remarks>
     public async Task<IEnumerable<DocumentDto>> GetAllAsync(CancellationToken ct = default) =>
         await db.Documents
             .AsNoTracking()
@@ -38,7 +44,8 @@ public class DocumentService(AppDbContext db, ILogger<DocumentService> logger) :
                 Id = d.Id,
                 FileName = d.FileName,
                 FileSizeBytes = d.FileSizeBytes,
-                UploadedAt = d.UploadedAt
+                UploadedAt = d.UploadedAt,
+                Content = null
             })
             .ToListAsync(ct);
 
@@ -52,14 +59,14 @@ public class DocumentService(AppDbContext db, ILogger<DocumentService> logger) :
 
     public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
     {
-        var doc = await db.Documents.FindAsync(new object[] { id }, ct);
-        if (doc is null) return false;
+        var rows = await db.Documents
+            .Where(d => d.Id == id)
+            .ExecuteDeleteAsync(ct);
 
-        db.Documents.Remove(doc);
-        await db.SaveChangesAsync(ct);
+        if (rows > 0)
+            logger.LogInformation("Deleted document {Id}", id);
 
-        logger.LogInformation("Deleted document {Id}", id);
-        return true;
+        return rows > 0;
     }
 
     private static DocumentDto ToDto(Document doc, bool includeContent) => new()

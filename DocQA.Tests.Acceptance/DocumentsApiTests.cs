@@ -19,7 +19,13 @@ public class DocumentsApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     {
         var form = new MultipartFormDataContent();
         var bytes = new ByteArrayContent(Encoding.UTF8.GetBytes(content));
-        bytes.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+        bytes.Headers.ContentType = new MediaTypeHeaderValue(
+            Path.GetExtension(fileName).ToLowerInvariant() switch
+            {
+                ".pdf" => "application/pdf",
+                ".txt" => "text/plain",
+                _      => "application/octet-stream"
+            });
         form.Add(bytes, "file", fileName);
         return form;
     }

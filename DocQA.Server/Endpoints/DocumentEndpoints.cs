@@ -1,4 +1,6 @@
 using DocQA.Server.Services;
+using DocQA.Shared;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace DocQA.Server.Endpoints;
 
@@ -13,18 +15,22 @@ public static class DocumentEndpoints
         return app;
     }
 
-    private static async Task<IResult> UploadDocument(
+    private static async Task<Results<BadRequest<string>, Created<DocumentDto>>> UploadDocument(
         IFormFile? file, IDocumentService service, CancellationToken ct)
     {
         if (file is null)
-            return Results.BadRequest("No file provided.");
+            return TypedResults.BadRequest("No file provided.");
 
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (ext != ".txt" && ext != ".pdf")
-            return Results.BadRequest("Only .txt and .pdf files are supported.");
+            return TypedResults.BadRequest("Only .txt and .pdf files are supported.");
+
+        const long MaxBytes = 10 * 1024 * 1024;
+        if (file.Length > MaxBytes)
+            return TypedResults.BadRequest("File exceeds the 10 MB limit.");
 
         var doc = await service.CreateAsync(file, ct);
-        return Results.Created($"/api/documents/{doc.Id}", doc);
+        return TypedResults.Created($"/api/documents/{doc.Id}", doc);
     }
 
     private static async Task<IResult> GetAll(IDocumentService service, CancellationToken ct)
@@ -33,15 +39,17 @@ public static class DocumentEndpoints
         return Results.Ok(docs);
     }
 
-    private static async Task<IResult> GetById(int id, IDocumentService service, CancellationToken ct)
+    private static async Task<Results<Ok<DocumentDto>, NotFound>> GetById(
+        int id, IDocumentService service, CancellationToken ct)
     {
         var doc = await service.GetByIdAsync(id, ct);
-        return doc is null ? Results.NotFound() : Results.Ok(doc);
+        return doc is null ? TypedResults.NotFound() : TypedResults.Ok(doc);
     }
 
-    private static async Task<IResult> Delete(int id, IDocumentService service, CancellationToken ct)
+    private static async Task<Results<NoContent, NotFound>> Delete(
+        int id, IDocumentService service, CancellationToken ct)
     {
         var deleted = await service.DeleteAsync(id, ct);
-        return deleted ? Results.NoContent() : Results.NotFound();
+        return deleted ? TypedResults.NoContent() : TypedResults.NotFound();
     }
 }
