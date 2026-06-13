@@ -57,6 +57,10 @@ public class DocumentService(AppDbContext db, ILogger<DocumentService> logger) :
         return doc is null ? null : ToDto(doc, includeContent: true);
     }
 
+    // ExecuteDeleteAsync bypasses the change tracker; cascade delete of Messages
+    // is handled at the DB level via ON DELETE CASCADE (SQLite FK enforcement is
+    // enabled automatically by the EF Core SQLite provider).
+    // Double check that ON DELETE CASCADE still works if the provider changes.
     public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
     {
         var rows = await db.Documents
