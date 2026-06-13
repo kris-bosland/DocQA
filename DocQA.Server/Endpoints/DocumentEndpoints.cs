@@ -33,10 +33,11 @@ public static class DocumentEndpoints
         return TypedResults.Created($"/api/documents/{doc.Id}", doc);
     }
 
-    private static async Task<IResult> GetAll(IDocumentService service, CancellationToken ct)
+    private static async Task<Ok<IEnumerable<DocumentDto>>> GetAll(
+        IDocumentService service, CancellationToken ct)
     {
         var docs = await service.GetAllAsync(ct);
-        return Results.Ok(docs);
+        return TypedResults.Ok(docs);
     }
 
     private static async Task<Results<Ok<DocumentDto>, NotFound>> GetById(
