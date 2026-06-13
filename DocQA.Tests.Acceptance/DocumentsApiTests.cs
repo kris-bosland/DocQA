@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using DocQA.Shared;
@@ -103,5 +104,23 @@ public class DocumentsApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
             BuildFileUpload(fileName: "malware.exe"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostDocument_WithPdf_Returns201WithNonEmptyContent()
+    {
+        var asm = Assembly.GetExecutingAssembly();
+        using var pdfStream = asm.GetManifestResourceStream("DocQA.Tests.Acceptance.TestData.sample.pdf")!;
+        var form = new MultipartFormDataContent();
+        var pdfBytes = new StreamContent(pdfStream);
+        pdfBytes.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        form.Add(pdfBytes, "file", "sample.pdf");
+
+        var response = await _client.PostAsync("/api/documents", form);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var doc = await response.Content.ReadFromJsonAsync<DocumentDto>(JsonOpts);
+        Assert.NotNull(doc);
+        Assert.False(string.IsNullOrWhiteSpace(doc.Content));
     }
 }
