@@ -110,7 +110,8 @@ public class DocumentsApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     public async Task PostDocument_WithPdf_Returns201WithNonEmptyContent()
     {
         var asm = Assembly.GetExecutingAssembly();
-        using var pdfStream = asm.GetManifestResourceStream("DocQA.Tests.Acceptance.TestData.sample.pdf")!;
+        using var pdfStream = asm.GetManifestResourceStream("DocQA.Tests.Acceptance.TestData.sample.pdf")
+            ?? throw new InvalidOperationException("Embedded resource TestData/sample.pdf not found.");
         var form = new MultipartFormDataContent();
         var pdfBytes = new StreamContent(pdfStream);
         pdfBytes.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
