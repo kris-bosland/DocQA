@@ -107,6 +107,20 @@ public class DocumentsApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     }
 
     [Fact]
+    public async Task PostDocument_WithCorruptPdf_Returns400()
+    {
+        var corruptBytes = "%PDF-1.4 this is not a valid pdf"u8.ToArray();
+        var form = new MultipartFormDataContent();
+        var content = new ByteArrayContent(corruptBytes);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        form.Add(content, "file", "corrupt.pdf");
+
+        var response = await _client.PostAsync("/api/documents", form);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task PostDocument_WithPdf_Returns201WithNonEmptyContent()
     {
         var asm = Assembly.GetExecutingAssembly();
