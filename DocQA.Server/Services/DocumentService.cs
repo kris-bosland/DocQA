@@ -1,8 +1,8 @@
 using System.Text;
 using DocQA.Server.Data;
 using DocQA.Server.Models;
+using DocQA.Server.Parsing;
 using DocQA.Shared;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace DocQA.Server.Services;
@@ -11,8 +11,26 @@ public class DocumentService(AppDbContext db, ILogger<DocumentService> logger) :
 {
     public async Task<DocumentDto> CreateAsync(IFormFile file, CancellationToken ct = default)
     {
-        using var reader = new StreamReader(file.OpenReadStream(), Encoding.UTF8);
-        var content = await reader.ReadToEndAsync(ct);
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        string content;
+        if (ext == ".pdf")
+        {
+            using var stream = file.OpenReadStream();
+            try
+            {
+                content = await Task.Run(() => PdfTextExtractor.ExtractText(stream), ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Failed to parse PDF {FileName}", file.FileName);
+                throw new InvalidOperationException("The PDF could not be parsed.", ex);
+            }
+        }
+        else
+        {
+            using var reader = new StreamReader(file.OpenReadStream(), Encoding.UTF8);
+            content = await reader.ReadToEndAsync(ct);
+        }
 
         var doc = new Document
         {

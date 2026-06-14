@@ -29,8 +29,15 @@ public static class DocumentEndpoints
         if (file.Length > MaxBytes)
             return TypedResults.BadRequest("File exceeds the 10 MB limit.");
 
-        var doc = await service.CreateAsync(file, ct);
-        return TypedResults.Created($"/api/documents/{doc.Id}", doc);
+        try
+        {
+            var doc = await service.CreateAsync(file, ct);
+            return TypedResults.Created($"/api/documents/{doc.Id}", doc);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
     }
 
     private static async Task<Ok<IEnumerable<DocumentDto>>> GetAll(

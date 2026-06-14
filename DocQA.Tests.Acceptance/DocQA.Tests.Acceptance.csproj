@@ -17,6 +17,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="..\DocQA.Tests.Unit\TestData\sample.pdf"
+                      Link="TestData\sample.pdf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
