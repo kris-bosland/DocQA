@@ -21,6 +21,18 @@ public class QueryApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
     }
 
     [Fact]
+    public async Task QueryDocument_EmptyQuestion_Returns400()
+    {
+        var docId = await UploadTextDocumentAsync("Some content.");
+
+        var response = await _client.PostAsJsonAsync(
+            $"/api/documents/{docId}/query",
+            new QueryRequest { Question = "   " });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task QueryDocument_ValidDocument_ReturnsQueryResponse()
     {
         var docId = await UploadTextDocumentAsync("The quick brown fox.");
