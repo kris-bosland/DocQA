@@ -3,7 +3,7 @@ using Anthropic.SDK.Messaging;
 
 namespace DocQA.Server.Services;
 
-public sealed class AnthropicMessageSender(AnthropicClient client) : IMessageSender
+public sealed class AnthropicMessageSender(AnthropicClient client, ILogger<AnthropicMessageSender> logger) : IMessageSender
 {
     public async Task<string> SendAsync(string systemPrompt, string userMessage, CancellationToken ct = default)
     {
@@ -17,6 +17,9 @@ public sealed class AnthropicMessageSender(AnthropicClient client) : IMessageSen
         };
 
         var result = await client.Messages.GetClaudeMessageAsync(parameters, ct);
-        return result.Message.Content.OfType<TextContent>().FirstOrDefault()?.Text ?? string.Empty;
+        var text = result.Message.Content.OfType<TextContent>().FirstOrDefault()?.Text;
+        if (string.IsNullOrEmpty(text))
+            logger.LogWarning("Anthropic response contained no text content for model {Model}", parameters.Model);
+        return text ?? string.Empty;
     }
 }
