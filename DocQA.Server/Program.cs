@@ -1,3 +1,4 @@
+using Anthropic.SDK;
 using DocQA.Server.Data;
 using DocQA.Server.Endpoints;
 using DocQA.Server.Services;
@@ -11,11 +12,19 @@ builder.Services.AddDbContext<AppDbContext>(opts =>
 
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 
+var apiKey = builder.Configuration["Anthropic:ApiKey"];
+builder.Services.AddSingleton(apiKey is { Length: > 0 }
+    ? new AnthropicClient(apiKey)
+    : new AnthropicClient());
+builder.Services.AddSingleton<IMessageSender, AnthropicMessageSender>();
+builder.Services.AddScoped<IClaudeService, ClaudeService>();
+
 var app = builder.Build();
 
 app.UseHttpsRedirection();
 
 app.MapDocumentEndpoints();
+app.MapQueryEndpoints();
 
 app.Run();
 
