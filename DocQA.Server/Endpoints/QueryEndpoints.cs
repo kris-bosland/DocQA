@@ -16,7 +16,7 @@ public static class QueryEndpoints
         return app;
     }
 
-    private static async Task<Results<Ok<QueryResponse>, NotFound>> QueryDocument(
+    private static async Task<Results<Ok<QueryResponse>, NotFound, BadRequest<string>>> QueryDocument(
         int id,
         QueryRequest request,
         IDocumentService documentService,
@@ -24,6 +24,9 @@ public static class QueryEndpoints
         AppDbContext db,
         CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(request.Question))
+            return TypedResults.BadRequest("Question cannot be empty.");
+
         var document = await documentService.GetByIdAsync(id, ct);
         if (document is null)
             return TypedResults.NotFound();
@@ -31,19 +34,21 @@ public static class QueryEndpoints
         var (answer, excerpt) = await claudeService.QueryDocumentAsync(
             document.Content ?? string.Empty, request.Question, ct);
 
+        //Control the time of message creation to ensure the user message is always CreatedAt before the assistant message.
+        var now = DateTime.UtcNow;
         var userMsg = new Message
         {
             DocumentId = id,
             Role = "user",
             Content = request.Question,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = now
         };
         var assistantMsg = new Message
         {
             DocumentId = id,
             Role = "assistant",
             Content = answer,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = now.AddMilliseconds(1)
         };
         db.Messages.AddRange(userMsg, assistantMsg);
         await db.SaveChangesAsync(ct);

@@ -13,11 +13,11 @@ builder.Services.AddDbContext<AppDbContext>(opts =>
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 
 var apiKey = builder.Configuration["Anthropic:ApiKey"];
-builder.Services.AddSingleton(apiKey is { Length: > 0 }
+builder.Services.AddSingleton(_ => apiKey is { Length: > 0 }
     ? new AnthropicClient(apiKey)
     : new AnthropicClient());
 builder.Services.AddSingleton<IMessageSender, AnthropicMessageSender>();
-builder.Services.AddScoped<IClaudeService, ClaudeService>();
+builder.Services.AddSingleton<IClaudeService, ClaudeService>();
 
 var app = builder.Build();
 
