@@ -77,18 +77,19 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var doc = await ApiClient.GetDocumentAsync(Id);
-        if (doc is null)
+        try
+        {
+            DocumentDto doc = await ApiClient.GetDocumentAsync(Id);
+            _documentName = doc.FileName;
+            var messages = await ApiClient.GetMessagesAsync(Id);
+            if (messages is not null)
+                _messages.AddRange(messages.Select(m => new ChatMessage(m.Role, m.Content)));
+        }
+        catch
         {
             Nav.NavigateTo("/");
             return;
         }
-        _documentName = doc.FileName;
-
-        var messages = await ApiClient.GetMessagesAsync(Id);
-        if (messages is not null)
-            _messages.AddRange(messages.Select(m => new ChatMessage(m.Role, m.Content)));
-
         _loading = false;
     }
 

@@ -10,6 +10,10 @@
 {
     <p class="text-muted">Loading…</p>
 }
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
 else
 {
     <table class="table table-hover">
@@ -70,13 +74,24 @@ else
     private bool _loading = true;
     private bool _uploading;
     private string? _uploadError;
+    private string? _loadError;
     private int _fileInputKey;
 
     protected override async Task OnInitializedAsync()
     {
-        var docs = await ApiClient.GetDocumentsAsync();
-        _documents = docs?.ToList() ?? [];
-        _loading = false;
+        try
+        {
+            var docs = await ApiClient.GetDocumentsAsync();
+            _documents = docs?.ToList() ?? [];
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Could not load documents: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private void FileSelected(InputFileChangeEventArgs e)
@@ -110,8 +125,9 @@ else
 
     private async Task DeleteDocument(int id)
     {
-        await ApiClient.DeleteDocumentAsync(id);
-        _documents.RemoveAll(d => d.Id == id);
+        var response = await ApiClient.DeleteDocumentAsync(id);
+        if (response.IsSuccessStatusCode)
+            _documents.RemoveAll(d => d.Id == id);
     }
 
     private void OpenDocument(int id) => Nav.NavigateTo($"/document/{id}");

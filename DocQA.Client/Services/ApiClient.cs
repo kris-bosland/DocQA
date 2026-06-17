@@ -10,15 +10,18 @@ public class ApiClient(HttpClient http)
     public Task<IEnumerable<DocumentDto>?> GetDocumentsAsync()
         => http.GetFromJsonAsync<IEnumerable<DocumentDto>>("api/documents");
 
-    public Task<DocumentDto?> GetDocumentAsync(int id)
-        => http.GetFromJsonAsync<DocumentDto>($"api/documents/{id}");
+    public Task<DocumentDto> GetDocumentAsync(int id)
+        => http.GetFromJsonAsync<DocumentDto>($"api/documents/{id}")!;
 
     public async Task<DocumentDto?> UploadDocumentAsync(IBrowserFile file)
     {
         using var content = new MultipartFormDataContent();
         using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
         using var fileContent = new StreamContent(stream);
-        fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+        var contentType = file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
+            ? "application/pdf"
+            : "text/plain";
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         content.Add(fileContent, "file", file.Name);
 
         var response = await http.PostAsync("api/documents", content);
