@@ -1,22 +1,22 @@
 @page "/document/{Id:int}"
+@using System.Net
 @inject ApiClient ApiClient
 @inject NavigationManager Nav
 
-<PageTitle>DocQA — Chat</PageTitle>
+<PageTitle>DocQA - Chat</PageTitle>
 
 <div class="d-flex align-items-center mb-3">
-    <a href="/" class="btn btn-outline-secondary btn-sm me-3">← Back</a>
+    <a href="/" class="btn btn-outline-secondary btn-sm me-3">Back</a>
     <h1 class="h4 mb-0">@_documentName</h1>
 </div>
 
 @if (_loading)
 {
-    <p class="text-muted">Loading…</p>
+    <p class="text-muted">Loading...</p>
 }
 else
 {
-    <div class="border rounded p-3 mb-3"
-         style="min-height: 300px; max-height: 500px; overflow-y: auto;">
+    <div class="border rounded p-3 mb-3" style="min-height: 300px; max-height: 500px; overflow-y: auto;">
         @if (_messages.Count == 0)
         {
             <p class="text-muted text-center mt-5">
@@ -27,18 +27,16 @@ else
         {
             @foreach (var msg in _messages)
             {
-                @if (msg.Role == "user")
+                if (msg.Role == "user")
                 {
                     <div class="d-flex justify-content-end mb-2">
-                        <div class="bg-primary text-white rounded px-3 py-2"
-                             style="max-width: 70%;">@msg.Content</div>
+                        <div class="bg-primary text-white rounded px-3 py-2" style="max-width: 70%;">@msg.Content</div>
                     </div>
                 }
                 else
                 {
                     <div class="d-flex justify-content-start mb-2">
-                        <div class="bg-light border rounded px-3 py-2"
-                             style="max-width: 70%;">@msg.Content</div>
+                        <div class="bg-light border rounded px-3 py-2" style="max-width: 70%;">@msg.Content</div>
                     </div>
                 }
             }
@@ -46,60 +44,67 @@ else
     </div>
 
     <div class="input-group">
-        <input type="text" class="form-control"
-               placeholder="Ask a question…"
-               @bind="_question" @bind:event="oninput"
+        <input type="text"
+               class="form-control"
+               placeholder="Ask a question..."
+               @bind="_question"
+               @bind:event="oninput"
                @onkeydown="HandleKeyDown"
                disabled="@_asking" />
-        <button class="btn btn-primary" @onclick="AskQuestion"
+
+        <button class="btn btn-primary"
+                @onclick="AskQuestion"
                 disabled="@(string.IsNullOrWhiteSpace(_question) || _asking)">
-            @(_asking ? "Asking…" : "Ask")
+            @(_asking ? "Asking..." : "Ask")
         </button>
     </div>
 
-    @if (_error is not null)
+    @if (_askError is not null)
     {
-        <div class="alert alert-danger mt-2">@_error</div>
+        <div class="alert alert-danger mt-2">@_askError</div>
     }
 }
 
 @code {
     private sealed record ChatMessage(string Role, string Content);
 
-    [Parameter] public int Id { get; set; }
+    [Parameter]
+    public int Id { get; set; }
 
-    private string _documentName = string.Empty;
-    private readonly List<ChatMessage> _messages = [];
+    private string _documentName = "Document";
+    private readonly List<ChatMessage> _messages = new();
     private string _question = string.Empty;
     private bool _loading = true;
     private bool _asking;
-    private string? _error;
+    private string? _askError;
 
     protected override async Task OnInitializedAsync()
     {
-        try
+        var doc = await ApiClient.TryGetDocumentAsync(Id);
+        if (doc is null)
         {
-            DocumentDto doc = await ApiClient.GetDocumentAsync(Id);
-            _documentName = doc.FileName;
-            var messages = await ApiClient.GetMessagesAsync(Id);
-            if (messages is not null)
-                _messages.AddRange(messages.Select(m => new ChatMessage(m.Role, m.Content)));
-        }
-        catch
-        {
+            _loading = false;
             Nav.NavigateTo("/");
             return;
         }
+
+        _documentName = doc.FileName;
+        var messages = await ApiClient.GetMessagesAsync(Id);
+        _messages.AddRange(messages.Select(m => new ChatMessage(m.Role, m.Content)));
+
         _loading = false;
     }
 
     private async Task AskQuestion()
     {
-        if (string.IsNullOrWhiteSpace(_question) || _asking) return;
+        if (string.IsNullOrWhiteSpace(_question) || _asking)
+        {
+            return;
+        }
 
         var question = _question.Trim();
         _question = string.Empty;
-        _error = null;
+        _askError = null;
 
         _messages.Add(new ChatMessage("user", question));
         _asking = true;
@@ -108,11 +113,13 @@ else
         {
             var result = await ApiClient.QueryDocumentAsync(Id, question);
             if (result is not null)
+            {
                 _messages.Add(new ChatMessage("assistant", result.Answer));
+            }
         }
         catch (Exception ex)
         {
-            _error = $"Failed to get answer: {ex.Message}";
+            _askError = $"Failed to get answer: {ex.Message}";
         }
         finally
         {
@@ -123,6 +130,8 @@ else
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
+        {
             await AskQuestion();
+        }
     }
 }

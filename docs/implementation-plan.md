@@ -435,8 +435,30 @@ public class BrowserFixture : WebApplicationFactory<Program>, IAsyncLifetime
    - Type a question and click [Ask] → user bubble appears immediately
    - Stub returns a canned answer → assistant bubble appears with that answer
 
-4. Enable the browser test steps in `.gitea/workflows/ci.yml` by removing the `if: false` conditions
-5. Add Playwright browser caching to CI to avoid re-downloading on every run:
+### Tiny client API wrapper test layer
+
+Purpose:
+- Add a fast test slice for `ApiClient` behavior without Playwright.
+- Validate wrapper response contracts for success, 404 mapping, and non-success exceptions.
+
+Scope:
+- Test only `ApiClient` HTTP behavior with a fake `HttpMessageHandler`.
+- Keep UI rendering and journeys in Playwright tests.
+
+Tests to include:
+- `GetDocumentsAsync` returns parsed list.
+- `TryGetDocumentAsync` returns `null` on 404.
+- `TryGetDocumentAsync` throws on non-404 errors.
+- `QueryDocumentAsync` throws on non-success status.
+- `UploadDocumentAsync` posts multipart field named `file`.
+
+Placement:
+
+* Add tests in `DocQA.Tests.Unit/Client/ApiClientTests.cs`.
+
+4. Add the tiny `ApiClient` contract tests in `DocQA.Tests.Unit` as described above.
+5. Enable the browser test steps in `.gitea/workflows/ci.yml` by removing the `if: false` conditions.
+6. Add Playwright browser caching to CI to avoid re-downloading on every run:
 
 ```yaml
       # Add before the 'Install Playwright browsers' step
@@ -448,7 +470,7 @@ public class BrowserFixture : WebApplicationFactory<Program>, IAsyncLifetime
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('**/DocQA.Tests.Browser/*.csproj') }}
 ```
 
-**Deliverable**: browser tests green in CI; `if: false` guards removed; ready to deploy.
+**Deliverable**: browser tests green in CI, tiny ApiClient wrapper tests green, `if: false` guards removed, ready to deploy.
 
 ---
 
