@@ -1,0 +1,153 @@
+@page "/"
+@inject ApiClient ApiClient
+@inject NavigationManager Nav
+
+<PageTitle>DocQA — Documents</PageTitle>
+
+<h1 class="h3 mb-4">Documents</h1>
+
+@if (_loading)
+{
+    <p class="text-muted">Loading…</p>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
+}
+else
+{
+    @if (_deleteError is not null)
+    {
+        <div class="alert alert-danger">@_deleteError</div>
+    }
+
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Uploaded</th>
+                <th>Size</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var doc in _documents)
+            {
+                <tr @key="doc.Id">
+                    <td>@doc.FileName</td>
+                    <td>@doc.UploadedAt.ToLocalTime().ToString("g")</td>
+                    <td>@FormatSize(doc.FileSizeBytes)</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary me-1"
+                                @onclick="() => OpenDocument(doc.Id)">Open</button>
+                        <button class="btn btn-sm btn-outline-danger"
+                                @onclick="() => DeleteDocument(doc.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+            @if (_documents.Count == 0)
+            {
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-3">
+                        No documents yet. Upload one below.
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<div class="card mt-2" style="max-width: 500px;">
+    <div class="card-body">
+        <h5 class="card-title">Upload Document</h5>
+        <InputFile @key="_fileInputKey" accept=".txt,.pdf" OnChange="FileSelected"
+                   class="form-control mb-2" />
+        <button class="btn btn-success" @onclick="UploadFile"
+                disabled="@(_selectedFile is null || _uploading)">
+            @(_uploading ? "Uploading…" : "Upload")
+        </button>
+        @if (_uploadError is not null)
+        {
+            <div class="alert alert-danger mt-2 mb-0">@_uploadError</div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<DocumentDto> _documents = [];
+    private IBrowserFile? _selectedFile;
+    private bool _loading = true;
+    private bool _uploading;
+    private string? _uploadError;
+    private string? _deleteError;
+    private string? _loadError;
+    private int _fileInputKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var docs = await ApiClient.GetDocumentsAsync();
+            _documents = docs.ToList();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Could not load documents: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void FileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        _uploadError = null;
+    }
+
+    private async Task UploadFile()
+    {
+        if (_selectedFile is null) return;
+        _uploading = true;
+        _uploadError = null;
+        try
+        {
+            var doc = await ApiClient.UploadDocumentAsync(_selectedFile);
+            _documents.Insert(0, doc);
+            _selectedFile = null;
+            _fileInputKey++;
+        }
+        catch (Exception ex)
+        {
+            _uploadError = $"Upload failed: {ex.Message}";
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task DeleteDocument(int id)
+    {
+        _deleteError = null;
+        try
+        {
+            await ApiClient.DeleteDocumentAsync(id);
+            _documents.RemoveAll(d => d.Id == id);
+        }
+        catch (Exception ex)
+        {
+            _deleteError = $"Failed to delete: {ex.Message}";
+        }
+    }
+
+    private void OpenDocument(int id) => Nav.NavigateTo($"/document/{id}");
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        < 1_024 => $"{bytes} B",
+        < 1_048_576 => $"{bytes / 1_024} KB",
+        _ => $"{bytes / 1_048_576} MB"
+    };
+}

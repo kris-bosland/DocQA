@@ -1,16 +1,11 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand" href="/">DocQA</a>
     </div>
+</nav>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank" rel="noopener noreferrer">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+<div class="container">
+    @Body
 </div>
