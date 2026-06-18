@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using DocQA.Server.Data;
 using DocQA.Server.Endpoints;
 using DocQA.Server.Models;
@@ -17,15 +19,23 @@ namespace DocQA.Tests.Browser.Fixtures;
 
 public sealed class BrowserFixture : IAsyncLifetime
 {
-    private const string BaseUrl = "http://127.0.0.1:5099";
-
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
-    private readonly string _clientWebRoot = CreateClientWebRoot();
+    private readonly string _baseUrl;
+    private readonly string _publishRoot;
+    private readonly string _clientWebRoot;
     private WebApplication? _app;
 
     public IPlaywright Playwright { get; private set; } = null!;
     public IBrowser Browser { get; private set; } = null!;
-    public string AppBaseUrl => BaseUrl;
+    public string AppBaseUrl => _baseUrl;
+
+    public BrowserFixture()
+    {
+        var port = GetAvailablePort();
+        _baseUrl = $"http://127.0.0.1:{port}";
+        _publishRoot = Path.Combine(Path.GetTempPath(), $"docqa-client-publish-{Guid.NewGuid():N}");
+        _clientWebRoot = CreateClientWebRoot(_baseUrl, _publishRoot);
+    }
 
     public async Task InitializeAsync()
     {
@@ -40,7 +50,7 @@ public sealed class BrowserFixture : IAsyncLifetime
         var webRootFileProvider = new PhysicalFileProvider(_clientWebRoot);
         builder.Environment.WebRootPath = _clientWebRoot;
         builder.Environment.WebRootFileProvider = webRootFileProvider;
-        builder.WebHost.UseKestrel().UseUrls(BaseUrl);
+        builder.WebHost.UseKestrel().UseUrls(_baseUrl);
         builder.Services.AddDbContext<AppDbContext>(opts => opts.UseSqlite(_connection));
         builder.Services.AddScoped<IDocumentService, DocumentService>();
         builder.Services.AddSingleton<IClaudeService, StubClaudeService>();
@@ -99,12 +109,14 @@ public sealed class BrowserFixture : IAsyncLifetime
 
         if (Directory.Exists(_clientWebRoot))
             Directory.Delete(_clientWebRoot, recursive: true);
+
+        if (Directory.Exists(_publishRoot))
+            Directory.Delete(_publishRoot, recursive: true);
     }
 
-    private static string CreateClientWebRoot()
+    private static string CreateClientWebRoot(string baseUrl, string publishRoot)
     {
         var solutionRoot = FindSolutionRoot();
-        var publishRoot = Path.Combine(Path.GetTempPath(), $"docqa-client-publish-{Guid.NewGuid():N}");
         PublishClient(solutionRoot, publishRoot);
 
         var publishedWebRoot = Path.Combine(publishRoot, "wwwroot");
@@ -116,9 +128,18 @@ public sealed class BrowserFixture : IAsyncLifetime
 
         File.WriteAllText(
             Path.Combine(tempRoot, "appsettings.json"),
-            "{\n  \"ApiBaseUrl\": \"http://127.0.0.1:5099\"\n}\n");
+            $"{{\n  \"ApiBaseUrl\": \"{baseUrl}\"\n}}\n");
 
         return tempRoot;
+    }
+
+    private static int GetAvailablePort()
+    {
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+        return port;
     }
 
     private static void PublishClient(string solutionRoot, string outputDirectory)
