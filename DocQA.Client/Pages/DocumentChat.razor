@@ -1,5 +1,4 @@
 @page "/document/{Id:int}"
-@using System.Net
 @inject ApiClient ApiClient
 @inject NavigationManager Nav
 
@@ -13,6 +12,10 @@
 @if (_loading)
 {
     <p class="text-muted">Loading...</p>
+}
+else if (_loadError is not null)
+{
+    <div class="alert alert-danger">@_loadError</div>
 }
 else
 {
@@ -76,23 +79,32 @@ else
     private string _question = string.Empty;
     private bool _loading = true;
     private bool _asking;
+    private string? _loadError;
     private string? _askError;
 
     protected override async Task OnInitializedAsync()
     {
-        var doc = await ApiClient.TryGetDocumentAsync(Id);
-        if (doc is null)
+        try
+        {
+            var doc = await ApiClient.TryGetDocumentAsync(Id);
+            if (doc is null)
+            {
+                Nav.NavigateTo("/");
+                return;
+            }
+
+            _documentName = doc.FileName;
+            var messages = await ApiClient.GetMessagesAsync(Id);
+            _messages.AddRange(messages.Select(m => new ChatMessage(m.Role, m.Content)));
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Could not load document: {ex.Message}";
+        }
+        finally
         {
             _loading = false;
-            Nav.NavigateTo("/");
-            return;
         }
-
-        _documentName = doc.FileName;
-        var messages = await ApiClient.GetMessagesAsync(Id);
-        _messages.AddRange(messages.Select(m => new ChatMessage(m.Role, m.Content)));
-
-        _loading = false;
     }
 
     private async Task AskQuestion()
@@ -112,10 +124,7 @@ else
         try
         {
             var result = await ApiClient.QueryDocumentAsync(Id, question);
-            if (result is not null)
-            {
-                _messages.Add(new ChatMessage("assistant", result.Answer));
-            }
+            _messages.Add(new ChatMessage("assistant", result.Answer));
         }
         catch (Exception ex)
         {

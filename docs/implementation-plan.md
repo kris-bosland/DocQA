@@ -453,8 +453,7 @@ Tests to include:
 - `UploadDocumentAsync` posts multipart field named `file`.
 
 Placement:
-
-* Add tests in `DocQA.Tests.Unit/Client/ApiClientTests.cs`.
+- Add tests in `DocQA.Tests.Unit/Client/ApiClientTests.cs`.
 
 4. Add the tiny `ApiClient` contract tests in `DocQA.Tests.Unit` as described above.
 5. Enable the browser test steps in `.gitea/workflows/ci.yml` by removing the `if: false` conditions.
