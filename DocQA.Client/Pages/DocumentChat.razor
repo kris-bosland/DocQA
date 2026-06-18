@@ -97,6 +97,10 @@ else
             var messages = await ApiClient.GetMessagesAsync(Id);
             _messages.AddRange(messages.Select(m => new ChatMessage(m.Role, m.Content)));
         }
+        catch (OperationCanceledException)
+        {
+            // Ignore cancellation from navigation/unload.
+        }
         catch (Exception ex)
         {
             _loadError = $"Could not load document: {ex.Message}";
@@ -125,6 +129,10 @@ else
         {
             var result = await ApiClient.QueryDocumentAsync(Id, question);
             _messages.Add(new ChatMessage("assistant", result.Answer));
+        }
+        catch (OperationCanceledException)
+        {
+            // Ignore cancellation from navigation/unload.
         }
         catch (Exception ex)
         {

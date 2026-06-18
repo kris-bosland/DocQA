@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DocQA.Client\DocQA.Client.csproj" />
     <ProjectReference Include="..\DocQA.Server\DocQA.Server.csproj" />
     <ProjectReference Include="..\DocQA.Shared\DocQA.Shared.csproj" />
   </ItemGroup>

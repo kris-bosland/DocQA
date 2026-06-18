@@ -16,6 +16,11 @@ else if (_loadError is not null)
 }
 else
 {
+    @if (_deleteError is not null)
+    {
+        <div class="alert alert-danger">@_deleteError</div>
+    }
+
     <table class="table table-hover">
         <thead>
             <tr>
@@ -74,6 +79,7 @@ else
     private bool _loading = true;
     private bool _uploading;
     private string? _uploadError;
+    private string? _deleteError;
     private string? _loadError;
     private int _fileInputKey;
 
@@ -124,6 +130,7 @@ else
 
     private async Task DeleteDocument(int id)
     {
+        _deleteError = null;
         try
         {
             await ApiClient.DeleteDocumentAsync(id);
@@ -131,7 +138,7 @@ else
         }
         catch (Exception ex)
         {
-            _uploadError = $"Failed to delete: {ex.Message}";
+            _deleteError = $"Failed to delete: {ex.Message}";
         }
     }
 
