@@ -341,6 +341,12 @@ public class ApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
 
 **Goal**: key user journeys covered by headless browser tests running in CI before going live.
 
+### Required guidance for this phase
+
+- Before changing anything under `DocQA.Tests.Browser/**`, read and follow `.github/instructions/playwright.instructions.md`.
+- Treat that file as the source of truth for fixture hosting layout, static asset handling, and first-line troubleshooting.
+- Keep the implementation plan here focused on scope and deliverables; keep operational troubleshooting details in the instruction file.
+
 ### What Playwright requires
 
 | Requirement | Detail |
@@ -470,6 +476,8 @@ Placement:
 ```
 
 **Deliverable**: browser tests green in CI, tiny ApiClient wrapper tests green, `if: false` guards removed, ready to deploy.
+
+**Process check**: new browser-test changes reference and follow `.github/instructions/playwright.instructions.md`.
 
 ---
 

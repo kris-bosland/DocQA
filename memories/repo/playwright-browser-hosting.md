@@ -1,0 +1,4 @@
+- For DocQA Playwright tests, serve the published `DocQA.Client` `wwwroot` output directly; do not rebuild Blazor assets by hand.
+- If Blazor runtime fetches fail, first check the publish layout and static-file mappings before changing test code.
+- Map `.dat` to `application/octet-stream` in the browser fixture so ICU globalization assets load.
+- Keep browser tests serialized with `BrowserCollection` and use a stub Claude service plus in-memory SQLite for determinism.
