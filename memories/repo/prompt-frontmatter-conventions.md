@@ -1,0 +1,2 @@
+- In this repo's prompt frontmatter, use agent: agent (not agent: true).
+- Treat prompt schema choices in existing .github/prompts files as source of truth unless user says otherwise.

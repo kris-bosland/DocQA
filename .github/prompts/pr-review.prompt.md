@@ -1,12 +1,14 @@
 ---
 description: "Review a pull request for correctness, conventions, and security. Use when: reviewing a PR, code review, checking a branch before merge."
-mode: agent
+agent: agent
 model: "o3 (copilot)"
 argument-hint: "Paste the PR description, or attach the diff with #changes"
 tools: [read, search]
 ---
 
 Review this pull request against the DocQA project conventions.
+The input of the prompt will be the PR description, or a diff of the changed files if the description is insufficient.
+Also read any repo files in place on disk if needed for context or if parts of the diff are ambiguous, incomplete, or missing.
 
 ## What to check
 

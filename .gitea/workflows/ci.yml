@@ -59,24 +59,19 @@ jobs:
           # reference it here: ConnectionStrings__DefaultConnection: ${{ secrets.CI_DB }}
           ASPNETCORE_ENVIRONMENT: Testing
 
-      # Browser tests are disabled until Phase 5b.
-      # To enable: remove the 'if: false' conditions and ensure
-      # DocQA.Tests.Browser has real tests (no Skip attributes).
+      # Browser tests are enabled in Phase 5b and run as part of CI.
       # MIGRATION NOTE: the install command and test step below are identical
       # on GitHub Actions — no changes needed when migrating.
       - name: Cache Playwright browsers
-        if: false
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('**/DocQA.Tests.Browser/*.csproj') }}
 
       - name: Install Playwright browsers
-        if: false
         run: pwsh DocQA.Tests.Browser/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Run browser tests
-        if: false
         run: >
           dotnet test DocQA.Tests.Browser/DocQA.Tests.Browser.csproj
           --no-build --configuration Release
