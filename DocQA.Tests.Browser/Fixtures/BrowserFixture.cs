@@ -19,38 +19,96 @@ namespace DocQA.Tests.Browser.Fixtures;
 
 public sealed class BrowserFixture : IAsyncLifetime
 {
+    private const int MaxStartAttempts = 3;
+
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
-    private readonly string _baseUrl;
-    private readonly string _publishRoot;
-    private readonly string _clientWebRoot;
+    private string? _baseUrl;
+    private string? _publishRoot;
+    private string? _clientWebRoot;
     private WebApplication? _app;
 
     public IPlaywright Playwright { get; private set; } = null!;
     public IBrowser Browser { get; private set; } = null!;
-    public string AppBaseUrl => _baseUrl;
-
-    public BrowserFixture()
-    {
-        var port = GetAvailablePort();
-        _baseUrl = $"http://127.0.0.1:{port}";
-        _publishRoot = Path.Combine(Path.GetTempPath(), $"docqa-client-publish-{Guid.NewGuid():N}");
-        _clientWebRoot = CreateClientWebRoot(_baseUrl, _publishRoot);
-    }
+    public string AppBaseUrl => _baseUrl ?? throw new InvalidOperationException("Browser fixture is not initialized.");
 
     public async Task InitializeAsync()
     {
         _connection.Open();
 
+        for (var attempt = 1; attempt <= MaxStartAttempts; attempt++)
+        {
+            var baseUrl = $"http://127.0.0.1:{GetAvailablePort()}";
+            var publishRoot = Path.Combine(Path.GetTempPath(), $"docqa-client-publish-{Guid.NewGuid():N}");
+            var clientWebRoot = CreateClientWebRoot(baseUrl, publishRoot);
+
+            try
+            {
+                var app = BuildHost(baseUrl, clientWebRoot);
+                await app.StartAsync();
+
+                _baseUrl = baseUrl;
+                _publishRoot = publishRoot;
+                _clientWebRoot = clientWebRoot;
+                _app = app;
+
+                using (var scope = app.Services.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    await db.Database.EnsureCreatedAsync();
+                }
+
+                Playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+                Browser = await Playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+                {
+                    Headless = true
+                });
+
+                return;
+            }
+            catch (Exception ex) when (IsAddressInUse(ex) && attempt < MaxStartAttempts)
+            {
+                SafeDeleteDirectory(clientWebRoot);
+                SafeDeleteDirectory(publishRoot);
+            }
+            catch
+            {
+                SafeDeleteDirectory(clientWebRoot);
+                SafeDeleteDirectory(publishRoot);
+                throw;
+            }
+        }
+
+        throw new InvalidOperationException("Could not start browser fixture host after multiple attempts.");
+    }
+
+    public async Task DisposeAsync()
+    {
+        if (Browser is not null)
+            await Browser.DisposeAsync();
+
+        Playwright?.Dispose();
+
+        if (_app is not null)
+            await _app.StopAsync();
+
+        await _connection.DisposeAsync();
+
+        SafeDeleteDirectory(_clientWebRoot);
+        SafeDeleteDirectory(_publishRoot);
+    }
+
+    private WebApplication BuildHost(string baseUrl, string clientWebRoot)
+    {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = "Testing",
-            WebRootPath = _clientWebRoot
+            WebRootPath = clientWebRoot
         });
 
-        var webRootFileProvider = new PhysicalFileProvider(_clientWebRoot);
-        builder.Environment.WebRootPath = _clientWebRoot;
+        var webRootFileProvider = new PhysicalFileProvider(clientWebRoot);
+        builder.Environment.WebRootPath = clientWebRoot;
         builder.Environment.WebRootFileProvider = webRootFileProvider;
-        builder.WebHost.UseKestrel().UseUrls(_baseUrl);
+        builder.WebHost.UseKestrel().UseUrls(baseUrl);
         builder.Services.AddDbContext<AppDbContext>(opts => opts.UseSqlite(_connection));
         builder.Services.AddScoped<IDocumentService, DocumentService>();
         builder.Services.AddSingleton<IClaudeService, StubClaudeService>();
@@ -66,7 +124,7 @@ public sealed class BrowserFixture : IAsyncLifetime
         app.MapDocumentEndpoints();
         app.MapQueryEndpoints();
 
-        var indexFile = Path.Combine(_clientWebRoot, "index.html");
+        var indexFile = Path.Combine(clientWebRoot, "index.html");
         app.MapGet("/", async context =>
         {
             context.Response.ContentType = "text/html";
@@ -79,39 +137,7 @@ public sealed class BrowserFixture : IAsyncLifetime
             await context.Response.WriteAsync(await File.ReadAllTextAsync(indexFile));
         });
 
-        await app.StartAsync();
-        _app = app;
-
-        using (var scope = app.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            await db.Database.EnsureCreatedAsync();
-        }
-
-        Playwright = await Microsoft.Playwright.Playwright.CreateAsync();
-        Browser = await Playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
-        {
-            Headless = true
-        });
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (Browser is not null)
-            await Browser.DisposeAsync();
-
-        Playwright?.Dispose();
-
-        if (_app is not null)
-            await _app.StopAsync();
-
-        await _connection.DisposeAsync();
-
-        if (Directory.Exists(_clientWebRoot))
-            Directory.Delete(_clientWebRoot, recursive: true);
-
-        if (Directory.Exists(_publishRoot))
-            Directory.Delete(_publishRoot, recursive: true);
+        return app;
     }
 
     private static string CreateClientWebRoot(string baseUrl, string publishRoot)
@@ -140,6 +166,33 @@ public sealed class BrowserFixture : IAsyncLifetime
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
         return port;
+    }
+
+    private static bool IsAddressInUse(Exception ex)
+    {
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            if (current is SocketException socketException
+                && socketException.SocketErrorCode == SocketError.AddressAlreadyInUse)
+            {
+                return true;
+            }
+
+            if (current.Message.Contains("address already in use", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void SafeDeleteDirectory(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+            return;
+
+        Directory.Delete(path, recursive: true);
     }
 
     private static void PublishClient(string solutionRoot, string outputDirectory)
