@@ -1,6 +1,6 @@
 ---
 description: "Review a pull request for correctness, conventions, and security. Use when: reviewing a PR, code review, checking a branch before merge."
-agent: true
+agent: agent
 model: "o3 (copilot)"
 argument-hint: "Paste the PR description, or attach the diff with #changes"
 tools: [read, search]
