@@ -34,3 +34,15 @@ Default (local development):
 Important:
 - This value is for local development only.
 - For deployment, set `ApiBaseUrl` to the deployed API URL (for example, your Azure App Service URL).
+
+## Deployment Notes
+
+The server uses SQLite in production. Set the App Service connection string to:
+
+- `ConnectionStrings__DefaultConnection=DataSource=/home/docqa/docqa.db`
+
+Also set the Anthropic API key as an App Service environment variable:
+
+- `ANTHROPIC_API_KEY`
+
+Database migrations are applied on startup, so the deployed app can create or update the SQLite schema automatically.
