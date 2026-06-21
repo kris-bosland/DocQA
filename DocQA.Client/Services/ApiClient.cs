@@ -16,6 +16,10 @@ internal sealed record ApiQueryErrorResponse(string Code, string Message, string
 
 public class ApiClient(HttpClient http)
 {
+    public async Task<SystemInfoDto> GetSystemInfoAsync(CancellationToken ct = default)
+        => await http.GetFromJsonAsync<SystemInfoDto>("api/system/info", ct)
+            ?? throw new InvalidOperationException("System info response body was empty.");
+
     public async Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(CancellationToken ct = default)
         => await http.GetFromJsonAsync<List<DocumentDto>>("api/documents", ct) ?? [];
 

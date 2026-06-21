@@ -54,6 +54,7 @@ app.UseCors();
 
 app.MapDocumentEndpoints();
 app.MapQueryEndpoints();
+app.MapSystemEndpoints();
 
 app.Run();
 

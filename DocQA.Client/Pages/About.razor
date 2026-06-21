@@ -1,5 +1,6 @@
 @page "/about"
 @inject IConfiguration Config
+@inject ApiClient ApiClient
 
 <PageTitle>DocQA — About</PageTitle>
 
@@ -9,9 +10,9 @@
     <div class="card-body">
         <h5 class="card-title">Build Information</h5>
         <dl class="row mb-0">
-            <dt class="col-sm-4">Build Version</dt>
+            <dt class="col-sm-4">Client Build</dt>
             <dd class="col-sm-8">
-                <code>@_buildVersion</code>
+                <code>@_clientBuildVersion</code>
             </dd>
 
             <dt class="col-sm-4">API Base URL</dt>
@@ -19,23 +20,45 @@
                 <code>@_apiBaseUrl</code>
             </dd>
 
-            <dt class="col-sm-4">Environment</dt>
+            <dt class="col-sm-4">Server Build</dt>
             <dd class="col-sm-8">
-                <code>@_environment</code>
+                <code>@_serverBuildVersion</code>
+            </dd>
+
+            <dt class="col-sm-4">Anthropic Model</dt>
+            <dd class="col-sm-8">
+                <code>@_anthropicModel</code>
             </dd>
         </dl>
+
+        @if (_serverInfoError is not null)
+        {
+            <div class="alert alert-warning mt-3 mb-0">@_serverInfoError</div>
+        }
     </div>
 </div>
 
 @code {
-    private string _buildVersion = "unknown";
+    private string _clientBuildVersion = "unknown";
     private string _apiBaseUrl = "unknown";
-    private string _environment = "unknown";
+    private string _serverBuildVersion = "unknown";
+    private string _anthropicModel = "unknown";
+    private string? _serverInfoError;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _buildVersion = Config["BuildVersion"] ?? "not configured";
+        _clientBuildVersion = Config["BuildVersion"] ?? "not configured";
         _apiBaseUrl = Config["ApiBaseUrl"] ?? "not configured";
-        _environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "production";
+
+        try
+        {
+            var info = await ApiClient.GetSystemInfoAsync();
+            _serverBuildVersion = info.ServerBuildVersion;
+            _anthropicModel = info.AnthropicModel;
+        }
+        catch (Exception ex)
+        {
+            _serverInfoError = $"Could not load server info from API: {ex.Message}";
+        }
     }
 }
