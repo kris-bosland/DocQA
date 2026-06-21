@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using DocQA.Shared;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -76,32 +77,53 @@ public class ApiClient(HttpClient http)
 
         if (!response.IsSuccessStatusCode)
         {
-            var error = await response.Content.ReadFromJsonAsync<ApiQueryErrorResponse>(cancellationToken: ct);
+            var statusCode = (int)response.StatusCode;
+
+            if (statusCode is not (502 or 503 or 500))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+
+            var body = await response.Content.ReadAsStringAsync(ct);
+            ApiQueryErrorResponse? error = null;
+
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                try
+                {
+                    error = await response.Content.ReadFromJsonAsync<ApiQueryErrorResponse>(cancellationToken: ct);
+                }
+                catch (JsonException)
+                {
+                    // Ignore and fall through to the generic HTTP failure path.
+                }
+            }
+
             var detail = error is null
                 ? null
                 : string.IsNullOrWhiteSpace(error.Details)
                     ? error.Message
                     : $"{error.Message} {error.Details}";
 
-            if (error?.Code == "CLAUDE_AUTH_FAILED" || (int)response.StatusCode == 502)
+            if (error?.Code == "CLAUDE_AUTH_FAILED" || statusCode == 502)
             {
                 throw new ApiException(
                     detail ?? "The server could not authenticate with Claude API. Check the configured API key.",
-                    error?.StatusCode ?? (int)response.StatusCode,
+                    error?.StatusCode ?? statusCode,
                     detail);
             }
 
-            if (error?.Code == "CLAUDE_UNAVAILABLE" || (int)response.StatusCode == 503)
+            if (error?.Code == "CLAUDE_UNAVAILABLE" || statusCode == 503)
             {
                 throw new ApiException(
                     detail ?? "The server could not reach Claude API. Please try again shortly.",
-                    error?.StatusCode ?? (int)response.StatusCode,
+                    error?.StatusCode ?? statusCode,
                     detail);
             }
 
             throw new ApiException(
-                detail ?? $"Query request failed with status {(int)response.StatusCode}.",
-                error?.StatusCode ?? (int)response.StatusCode,
+                detail ?? $"Query request failed with status {statusCode}.",
+                error?.StatusCode ?? statusCode,
                 detail);
         }
 
