@@ -16,7 +16,7 @@ public static class QueryEndpoints
         return app;
     }
 
-    private static async Task<Results<Ok<QueryResponse>, NotFound, BadRequest<string>, ProblemHttpResult>> QueryDocument(
+    private static async Task<Results<Ok<QueryResponse>, NotFound, BadRequest<string>, JsonHttpResult<QueryErrorResponse>>> QueryDocument(
         int id,
         QueryRequest request,
         IDocumentService documentService,
@@ -40,17 +40,27 @@ public static class QueryEndpoints
         }
         catch (ClaudeAuthenticationException)
         {
-            return TypedResults.Problem(
-                statusCode: StatusCodes.Status502BadGateway,
-                title: "Claude authentication failed",
-                detail: "The server could not authenticate with Claude API. Check the configured API key.");
+            return TypedResults.Json(
+                new QueryErrorResponse
+                {
+                    Code = "CLAUDE_AUTH_FAILED",
+                    Message = "The server could not authenticate with Claude API.",
+                    Details = "Check the configured API key.",
+                    StatusCode = StatusCodes.Status502BadGateway
+                },
+                statusCode: StatusCodes.Status502BadGateway);
         }
         catch (ClaudeUnavailableException)
         {
-            return TypedResults.Problem(
-                statusCode: StatusCodes.Status503ServiceUnavailable,
-                title: "Claude service unavailable",
-                detail: "The server could not reach Claude API. Please try again shortly.");
+            return TypedResults.Json(
+                new QueryErrorResponse
+                {
+                    Code = "CLAUDE_UNAVAILABLE",
+                    Message = "The server could not reach Claude API.",
+                    Details = "Please try again shortly.",
+                    StatusCode = StatusCodes.Status503ServiceUnavailable
+                },
+                statusCode: StatusCodes.Status503ServiceUnavailable);
         }
 
         //Control the time of message creation to ensure the user message is always CreatedAt before the assistant message.

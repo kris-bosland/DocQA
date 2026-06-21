@@ -6,10 +6,13 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace DocQA.Client.Services;
 
-public sealed class ApiException(string message, int? statusCode = null) : Exception(message)
+public sealed class ApiException(string message, int? statusCode = null, string? detail = null) : Exception(message)
 {
     public int? StatusCode { get; } = statusCode;
+    public string? Detail { get; } = detail;
 }
+
+internal sealed record ApiQueryErrorResponse(string Code, string Message, string? Details, int StatusCode);
 
 public class ApiClient(HttpClient http)
 {
@@ -69,23 +72,33 @@ public class ApiClient(HttpClient http)
 
         if (!response.IsSuccessStatusCode)
         {
-            if ((int)response.StatusCode == 502)
+            var error = await response.Content.ReadFromJsonAsync<ApiQueryErrorResponse>(cancellationToken: ct);
+            var detail = error is null
+                ? null
+                : string.IsNullOrWhiteSpace(error.Details)
+                    ? error.Message
+                    : $"{error.Message} {error.Details}";
+
+            if (error?.Code == "CLAUDE_AUTH_FAILED" || (int)response.StatusCode == 502)
             {
                 throw new ApiException(
-                    "The server could not authenticate with Claude API. Check the configured API key.",
-                    (int)response.StatusCode);
+                    detail ?? "The server could not authenticate with Claude API. Check the configured API key.",
+                    error?.StatusCode ?? (int)response.StatusCode,
+                    detail);
             }
 
-            if ((int)response.StatusCode == 503)
+            if (error?.Code == "CLAUDE_UNAVAILABLE" || (int)response.StatusCode == 503)
             {
                 throw new ApiException(
-                    "The server could not reach Claude API. Please try again shortly.",
-                    (int)response.StatusCode);
+                    detail ?? "The server could not reach Claude API. Please try again shortly.",
+                    error?.StatusCode ?? (int)response.StatusCode,
+                    detail);
             }
 
             throw new ApiException(
-                $"Query request failed with status {(int)response.StatusCode}.",
-                (int)response.StatusCode);
+                detail ?? $"Query request failed with status {(int)response.StatusCode}.",
+                error?.StatusCode ?? (int)response.StatusCode,
+                detail);
         }
 
         return await response.Content.ReadFromJsonAsync<QueryResponse>(cancellationToken: ct)

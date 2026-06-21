@@ -164,14 +164,9 @@ else
 
     private static string FormatAskError(Exception ex)
     {
-        if (ex is ApiException { StatusCode: 502 })
+        if (ex is ApiException apiException && apiException.StatusCode is 502 or 503)
         {
-            return "Could not get an answer because the server could not authenticate with Claude API. Check the configured API key.";
-        }
-
-        if (ex is ApiException { StatusCode: 503 })
-        {
-            return "Could not get an answer because the server could not reach Claude API. Please try again shortly.";
+            return apiException.Detail ?? apiException.Message;
         }
 
         if (ex.Message.Contains("Failed to fetch", StringComparison.OrdinalIgnoreCase))
