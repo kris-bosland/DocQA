@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace DocQA.Client.Services;
 
+public sealed class ApiException(string message, int? statusCode = null) : Exception(message)
+{
+    public int? StatusCode { get; } = statusCode;
+}
+
 public class ApiClient(HttpClient http)
 {
     public async Task<IReadOnlyList<DocumentDto>> GetDocumentsAsync(CancellationToken ct = default)
@@ -62,7 +67,26 @@ public class ApiClient(HttpClient http)
             new QueryRequest { Question = question },
             ct);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            if ((int)response.StatusCode == 502)
+            {
+                throw new ApiException(
+                    "The server could not authenticate with Claude API. Check the configured API key.",
+                    (int)response.StatusCode);
+            }
+
+            if ((int)response.StatusCode == 503)
+            {
+                throw new ApiException(
+                    "The server could not reach Claude API. Please try again shortly.",
+                    (int)response.StatusCode);
+            }
+
+            throw new ApiException(
+                $"Query request failed with status {(int)response.StatusCode}.",
+                (int)response.StatusCode);
+        }
 
         return await response.Content.ReadFromJsonAsync<QueryResponse>(cancellationToken: ct)
             ?? throw new InvalidOperationException("Query response body was empty.");

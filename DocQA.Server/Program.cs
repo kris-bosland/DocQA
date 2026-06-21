@@ -17,7 +17,13 @@ var clientOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins(clientOrigins)
+        policy.SetIsOriginAllowed(origin =>
+            clientOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase) ||
+            Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+            (
+                uri.Host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase) ||
+                uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            ))
             .AllowAnyHeader()
             .AllowAnyMethod());
 });

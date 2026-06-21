@@ -1,3 +1,6 @@
+using System.Net;
+using System.Security.Authentication;
+
 namespace DocQA.Server.Services;
 
 public sealed class ClaudeService(IMessageSender messageSender, ILogger<ClaudeService> logger) : IClaudeService
@@ -16,7 +19,31 @@ public sealed class ClaudeService(IMessageSender messageSender, ILogger<ClaudeSe
 
         logger.LogInformation("Querying Claude for document content of length {Length}", truncated.Length);
 
-        var text = await messageSender.SendAsync(SystemPrompt, userMessage, ct);
+        string text;
+        try
+        {
+            text = await messageSender.SendAsync(SystemPrompt, userMessage, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AuthenticationException ex)
+        {
+            logger.LogError(ex, "Claude API authentication failed.");
+            throw new ClaudeAuthenticationException("Claude API authentication failed.", ex);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            logger.LogError(ex, "Claude API rejected authentication with status code {StatusCode}.", ex.StatusCode);
+            throw new ClaudeAuthenticationException("Claude API rejected authentication.", ex);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to reach Claude API while processing a document query.");
+            throw new ClaudeUnavailableException("The server could not reach Claude API.", ex);
+        }
+
         return ParseResponse(text);
     }
 

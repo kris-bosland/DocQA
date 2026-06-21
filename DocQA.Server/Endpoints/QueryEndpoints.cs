@@ -16,7 +16,7 @@ public static class QueryEndpoints
         return app;
     }
 
-    private static async Task<Results<Ok<QueryResponse>, NotFound, BadRequest<string>>> QueryDocument(
+    private static async Task<Results<Ok<QueryResponse>, NotFound, BadRequest<string>, ProblemHttpResult>> QueryDocument(
         int id,
         QueryRequest request,
         IDocumentService documentService,
@@ -31,8 +31,27 @@ public static class QueryEndpoints
         if (document is null)
             return TypedResults.NotFound();
 
-        var (answer, excerpt) = await claudeService.QueryDocumentAsync(
-            document.Content ?? string.Empty, request.Question, ct);
+        string answer;
+        string excerpt;
+        try
+        {
+            (answer, excerpt) = await claudeService.QueryDocumentAsync(
+                document.Content ?? string.Empty, request.Question, ct);
+        }
+        catch (ClaudeAuthenticationException)
+        {
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status502BadGateway,
+                title: "Claude authentication failed",
+                detail: "The server could not authenticate with Claude API. Check the configured API key.");
+        }
+        catch (ClaudeUnavailableException)
+        {
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "Claude service unavailable",
+                detail: "The server could not reach Claude API. Please try again shortly.");
+        }
 
         //Control the time of message creation to ensure the user message is always CreatedAt before the assistant message.
         var now = DateTime.UtcNow;
