@@ -86,7 +86,7 @@ The server uses SQLite in production. Set these App Service environment variable
 
 | Variable | Value |
 |---|---|
-| `ConnectionStrings__DefaultConnection` | `DataSource=/home/docqa/docqa.db` |
+| `ConnectionStrings__DefaultConnection` | `DataSource=/home/docqa.db` |
 | `Anthropic__ApiKey` | your Anthropic key |
 | `Anthropic__Model` | model name (optional, overrides appsettings) |
 
