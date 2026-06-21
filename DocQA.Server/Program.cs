@@ -6,6 +6,22 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var clientOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ??
+    [
+        "https://witty-ground-04822531e.7.azurestaticapps.net",
+        "https://localhost:7149",
+        "http://localhost:5149"
+    ];
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy.WithOrigins(clientOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
 builder.Services.AddDbContext<AppDbContext>(opts =>
     opts.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
         ?? "DataSource=docqa.db"));
@@ -28,6 +44,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseHttpsRedirection();
+app.UseCors();
 
 app.MapDocumentEndpoints();
 app.MapQueryEndpoints();
