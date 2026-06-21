@@ -92,7 +92,7 @@ else
         }
         catch (Exception ex)
         {
-            _loadError = $"Could not load documents: {ex.Message}";
+            _loadError = FormatLoadError(ex);
         }
         finally
         {
@@ -143,6 +143,16 @@ else
     }
 
     private void OpenDocument(int id) => Nav.NavigateTo($"/document/{id}");
+
+    private static string FormatLoadError(Exception ex)
+    {
+        if (ex.Message.Contains("Failed to fetch", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Could not load documents because the API could not be reached. Check the API URL and confirm the server is running.";
+        }
+
+        return $"Could not load documents: {ex.Message}";
+    }
 
     private static string FormatSize(long bytes) => bytes switch
     {
