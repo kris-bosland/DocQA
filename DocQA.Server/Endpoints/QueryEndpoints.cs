@@ -22,6 +22,7 @@ public static class QueryEndpoints
         IDocumentService documentService,
         IClaudeService claudeService,
         AppDbContext db,
+        ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Question))
@@ -31,6 +32,7 @@ public static class QueryEndpoints
         if (document is null)
             return TypedResults.NotFound();
 
+        var logger = loggerFactory.CreateLogger("QueryEndpoints");
         string answer;
         string excerpt;
         try
@@ -61,6 +63,19 @@ public static class QueryEndpoints
                     StatusCode = StatusCodes.Status503ServiceUnavailable
                 },
                 statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected failure while querying Claude for document {DocumentId}.", id);
+            return TypedResults.Json(
+                new QueryErrorResponse
+                {
+                    Code = "QUERY_PROCESSING_FAILED",
+                    Message = "The server hit an unexpected error while processing your question.",
+                    Details = "The API is reachable, but query processing failed on the server. Check server logs.",
+                    StatusCode = StatusCodes.Status500InternalServerError
+                },
+                statusCode: StatusCodes.Status500InternalServerError);
         }
 
         //Control the time of message creation to ensure the user message is always CreatedAt before the assistant message.
