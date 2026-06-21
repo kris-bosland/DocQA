@@ -1,0 +1,41 @@
+@page "/about"
+@inject IConfiguration Config
+
+<PageTitle>DocQA — About</PageTitle>
+
+<h1 class="h3 mb-4">About DocQA</h1>
+
+<div class="card" style="max-width: 500px;">
+    <div class="card-body">
+        <h5 class="card-title">Build Information</h5>
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Build Version</dt>
+            <dd class="col-sm-8">
+                <code>@_buildVersion</code>
+            </dd>
+
+            <dt class="col-sm-4">API Base URL</dt>
+            <dd class="col-sm-8">
+                <code>@_apiBaseUrl</code>
+            </dd>
+
+            <dt class="col-sm-4">Environment</dt>
+            <dd class="col-sm-8">
+                <code>@_environment</code>
+            </dd>
+        </dl>
+    </div>
+</div>
+
+@code {
+    private string _buildVersion = "unknown";
+    private string _apiBaseUrl = "unknown";
+    private string _environment = "unknown";
+
+    protected override void OnInitialized()
+    {
+        _buildVersion = Config["BuildVersion"] ?? "not configured";
+        _apiBaseUrl = Config["ApiBaseUrl"] ?? "not configured";
+        _environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "production";
+    }
+}
