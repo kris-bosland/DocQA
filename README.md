@@ -1,5 +1,7 @@
 # DocQA
 
+[![CI-CD](https://github.com/kris-bosland/DocQA/actions/workflows/azure-static-web-apps-witty-ground-04822531e.yml/badge.svg?branch=main)](https://github.com/kris-bosland/DocQA/actions/workflows/azure-static-web-apps-witty-ground-04822531e.yml)
+
 A document Q&A tool. Upload `.txt` or `.pdf` files, then ask natural-language questions answered by Claude AI with a cited excerpt from the document.
 
 **Live demo**: [https://witty-ground-04822531e.7.azurestaticapps.net/](https://witty-ground-04822531e.7.azurestaticapps.net/)
